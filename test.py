@@ -11,8 +11,12 @@ class TestPrepareResponse(unittest.TestCase):
     self.assertEqual(client.prepare_response([2, 3]), b'[2, 3]\n')
 
 class TestPlayer(unittest.TestCase):
+  board = [[0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 1, 0, 0, 0], [0, 0, 0, 1, 1, 0, 0, 0], [0, 0, 0, 2, 1, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0]]
   player = client.Player()
+  player.update(1, board)
   assert player.get_adj_spaces([0,0]) == [[0,1],[1,1],[1,0]]
+
+  move = player.get_move()
 
 
 if __name__ == '__main__':

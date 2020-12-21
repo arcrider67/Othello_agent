@@ -6,26 +6,21 @@ import socket
 
 import random
 
+import reporting
+
+
 #takes in an ordered pair
 #[row, col]
 #returns true if its on the board
 #false if the location is off the board
-def is_valid_square(location):
-  #assumes a default board size of 8x8 indexed from 0
-  #this is safe since there are no commands in the game host to modify the board size
 
-  if(location[0] > 7 or location[1] > 7):
-    #loction to high of a position
-    return False
-  if(location[0] < 0 or location[1] < 0):
-    #location is too low
-    return False
-  
-  return True
 
+
+#class to keep track of board related variables
+#score
+#turn number
+#number of empty spaces
 class BoardState():
-  
-
   def __init__(self):
     #assumes a 8x8 othello board
     
@@ -38,6 +33,10 @@ class BoardState():
     self.dicts = {}
     self.move_number = 0
 
+    #ordered N, NE, E, SE, S, SW, W, NW 
+    self.directions = [[-1,0], [-1,1], [0,1], [1,1], [1, 0], [1, -1], [0, -1], [-1,-1]]
+    
+    #dicts serves to catagorize spaces that may be significant
     self.dicts[0] = [[0,0], [0,7], [7,0], [7,7]]
     self.dicts[1] = []
     for space in self.dicts[0]:
@@ -49,13 +48,9 @@ class BoardState():
       return int(self.move_number / 20)
 
   def get_square_type(self,location):
-    if(location in self.dicts[0]):
-      return 0
-    
-    if(location in self.dicts[1]):
-      return 1
-
-    return 3
+    if(location in self.dicts[0]): return 0 
+    elif(location in self.dicts[1]): return 1
+    else: return 3
 
 
   def get_adj_spaces(self, location):
@@ -63,7 +58,9 @@ class BoardState():
     
     #creats a list of adjecent squares 
     #ordered N, NE, E, SE, S, SW, W, NW 
-    adjacent_squares = [[location[0]-1,location[1]], [location[0]-1,location[1]+1], [location[0],location[1]+1], [location[0]+1,location[1]+1], [location[0]+1, location[1]], [location[0]+1, location[1]-1], [location[0], location[1]-1], [location[0]-1, location[1]-1]]
+    adjacent_squares = []
+    for dir in self.directions:
+      adjacent_squares.append[location[0]+dir[0], location[1]+dir[1]]
     
     #ensure that all squares in the return list are valid
     valid_adj_squares = []
@@ -91,9 +88,43 @@ class BoardState():
       self.output()
 
   def scan_board(self):
-    for row_num, row in enumerate(board):
+    for row_num, row in enumerate(self.board):
       for col_num, value in enumerate(row):
         self.player_spaces[value].append([row_num, col_num])
+
+  #returns the list of empty spaces
+  def get_empty_count(self):
+    return self.player_scores[0]
+
+  def get_empty_spaces(self):  
+    return self.player_spaces[0]
+  
+  def get_p1_spaces(self):
+    return self.player_spaces[1]
+  
+  def get_p2_spaces(self):
+    return self.player_spaces[2]
+
+
+  def get_p1_score(self):
+    return self.player_scores[1]
+  
+  def get_p2_score(self):
+    return self.player_scores[2]
+
+  def is_valid_square(self, location):
+  #assumes a default board size of 8x8 indexed from 0
+  #this is safe since there are no commands in the game host to modify the board size
+
+    if(location[0] > 7 or location[1] > 7):
+      #loction to high of a position
+      return False
+    if(location[0] < 0 or location[1] < 0):
+      #location is too low
+      return False
+    
+    return True
+
 
   def output(self):
     print(F"empty spaces: {self.player_scores[0]}")
@@ -101,7 +132,8 @@ class BoardState():
     print(F"player 2 score: {self.player_scores[2]}")
 
 
-
+#player class
+#takes information from the boardState class and makes a decision based on that
 
 class Player:
 
@@ -120,48 +152,38 @@ class Player:
   def set_board(self, board):
     self.board = board
 
+  #forces the board into a new state with given board layout and 
+  #the given players turn
   def update(self, player, board):
+      self.move_factors = {} #reset all move scores
+      self.set_board(board) #reset the board
+      self.set_player(player) #set the player (incase of weird server issue where player changes mid game)
+      self.phase = self.boardState_.get_phase() #set the current aprox phase of the game
 
-      self.move_factors = {}
-
-      self.set_board(board)
-      self.set_player(player)
-
-      self.phase = self.boardState_.get_phase()
-
-
-
-  def get_adj_spaces(self, location):
-    #look around a piece and find all adjecent squares
-    
-    #creats a list of adjecent squares 
-    #ordered N, NE, E, SE, S, SW, W, NW 
-    adjacent_squares = [[location[0]-1,location[1]], [location[0]-1,location[1]+1], [location[0],location[1]+1], [location[0]+1,location[1]+1], [location[0]+1, location[1]], [location[0]+1, location[1]-1], [location[0], location[1]-1], [location[0]-1, location[1]-1]]
-    
-    #ensure that all squares in the return list are valid
-    valid_adj_squares = []
-    for space in adjacent_squares:
-      if(is_valid_square(space)):
-        valid_adj_squares.append(space)
-    return valid_adj_squares
-
-  def get_board_val(self, location):
-    return(self.board[location[0]][location[1]])
-
+  def get_board_val(self,location):
+    return self.board[location[0]][location[1]]
 
   #starts at a given position and scans along a path until the piece changes
   #or hits the edge of the board
 
   #returns true if the piece at startlocation can be capped
-  #by placing a piece along the given direction
-  def scan_for_cap(self,start_location, direction):
-    cur_location = start_location
-    start_value = self.get_board_val(start_location)
+  #by placing a piece along the given location
+  #start location is the occupied space
+  #space is the empty space
+  def scan_for_cap(self,occupied_space, empty_space):
 
-    more_to_search = True
-    length_of_cap = 0
+    #determine the direction of the empty space relative to the occupied space
+    direction = [empty_space[0] - occupied_space[0], empty_space[1]-occupied_space[1]]
+    direction[0] = direction[0]*-1
+    direction[1] = direction[1]*-1
 
+    cur_location = occupied_space
+    start_value = self.get_board_val(occupied_space) #the piece color that will be flipped
+    more_to_search = True #false when the capture has ended
+    length_of_cap = 0 #track the length of the cap for decision making later
 
+    #scan the pieces oposite the empty space and determine if a capture can be made in that direction
+    #formatted recursively without a recursive call
     while(more_to_search):
         piece_val = self.get_board_val(cur_location)
         if(piece_val != start_value):
@@ -174,14 +196,16 @@ class Player:
               return False
 
         cur_location = [cur_location[0]+direction[0], cur_location[1] + direction[1]]
-        if(is_valid_square(cur_location)):
+        if(self.boardState_.is_valid_square(cur_location)):
           length_of_cap += 1
         else:
           #edge of board hit
           more_to_search = False
+
     return False
 
 
+  #generates all valid moves for the currently set board position
   def get_valid_moves(self):
 
     board = self.board
@@ -189,27 +213,24 @@ class Player:
 
     #will contain all empty spaces near opposing pieces
     valid_moves = []
-    for row_num, row in enumerate(board):
-      for col_num, column in enumerate(row):
-        if (column != 0 and column != self.player):          
-          #enemy piece scan it    
-          location = [row_num, col_num]
-          adjacent = self.get_adj_spaces(location)      
+    if(self.player == 1):
+      opposing_pieces = self.boardState_.get_p2_spaces()
+    else:
+      opposing_pieces = self.boardState_.get_p1_spaces()
+    #print(opposing_pieces)
+    for location in opposing_pieces:
+          #look at every enemy piece
+          #check if there are empty spaces around it 
+          adjacent = self.boardState_.get_adj_spaces(location)      
           
           #now we have all adjacent squares
           #filter down to spaces that are unoccupied
-          
           for space in adjacent:
             value = self.get_board_val(space)
             #print(value)
             if( value == 0):
 
-              #determine the direction of the empty space (constant time so not inefficient)
-              direction = [space[0] - location[0], space[1]-location[1]]
-              direction[0] = direction[0]*-1
-              direction[1] = direction[1]*-1
-
-              result = self.scan_for_cap(location, direction)
+              result = self.scan_for_cap(location, space)
               if(result):
                 if(tuple(space) not in self.move_factors):
                   self.move_factors[tuple(space)] = 0
@@ -219,30 +240,27 @@ class Player:
     
     return(valid_moves)
 
-  def get_move(self, player, board):
-    # TODO determine valid moves
+  def get_move(self):
 
-    #currently works
+    #Determine valid moves
     #could be optimized to make use of the board class for some of the calculations
     #not neccessary for strategy
     moves = self.get_valid_moves()
 
-
-
     # TODO determine best move
     move_scores= []
 
+    #score each move from 0(bad) to 100(very good)
     for move in moves:
       
-      #first check if a corner is available
+      #first check what kind of space this is
+      #corner, adjcent to corner or other
       space_type = self.boardState_.get_square_type(move)
 
-      
       if(space_type == 0):
-      
         #always take corners since they are always stable pieces (cant be flipped)
         move_scores.append(100)
-      
+
       elif(space_type == 1):
         #never take spaces next to corners unless required to
         move_scores.append(0)
@@ -253,6 +271,7 @@ class Player:
         #current game phase
         move_scores.append(self.score_move(move))
 
+    #pick the best score
     highest_score = max(move_scores)
     #fun printing
     if(highest_score == 100):
@@ -261,23 +280,21 @@ class Player:
         print("forced to take space adj to corner")
         print("life points going down")
 
-
     move = moves[move_scores.index(highest_score)]
     return move
 
+  #given a location will score the "goodness" of placing a piece there from 0 to 100
   def score_move(self, location):
     #will prioritize different factors based on the stage of the game
 
-    #early game will cap as few pieces as possible
     if(self.phase == 3):
+      #late game will capture as many as possible
       cap_size = self.move_factors[tuple(location)]
       score = (cap_size / 64) * 100
     else:
+      #early game and mid game will cap as few pieces as possible
       cap_size = self.move_factors[tuple(location)]
       score = (1- (cap_size / 64)) * 100
-      
-    #late game will capture as many as possible
-
 
     return score
 
@@ -304,7 +321,7 @@ if __name__ == "__main__":
       data = sock.recv(1024)
       if not data:
         #score final move to predict winner
-        
+        #reporting.final_score(board, move, player)
         print('connection to server closed')
         break
       json_data = json.loads(str(data.decode('UTF-8')))
@@ -314,11 +331,12 @@ if __name__ == "__main__":
 
       print(player, maxTurnTime, board)
 
+      #update the client's player_ai and the boardstate information
       player_ai.update(player, board)
       complex_board.update(board)
 
-
-      move = player_ai.get_move(player, board)
+      #generate next move based on latest board
+      move = player_ai.get_move()
       response = prepare_response(move)
       sock.sendall(response)
   finally:
