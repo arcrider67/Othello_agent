@@ -1,3 +1,5 @@
+import os.path
+
 from client import BoardState
 from client import Player
 
@@ -149,9 +151,17 @@ def final_score(board, last_known_move, player):
         complexBoard.output()
 
 
+    if os.path.isfile('filename.txt'):
+        #if file already exists open normally
+        fs = open("final_scores.csv", "a")
+    else:
+        #otherwise create it and add headers
+        fs = open("final_scores.csv", "a")
+        fs.write("agent_player, p1_score, p2_score, winner \n")
+        
+    
 
         
-    fs = open("final_scores.csv", "a")
     p1score = complexBoard.get_p1_score()
     p2score = complexBoard.get_p2_score()
     fs.write(str(og_player) + ",")
