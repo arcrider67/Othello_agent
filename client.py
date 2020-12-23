@@ -59,13 +59,13 @@ class BoardState():
     #creats a list of adjecent squares 
     #ordered N, NE, E, SE, S, SW, W, NW 
     adjacent_squares = []
-    for dir in self.directions:
-      adjacent_squares.append[location[0]+dir[0], location[1]+dir[1]]
+    for direc in self.directions:
+      adjacent_squares.append([location[0]+direc[0], location[1]+direc[1]])
     
     #ensure that all squares in the return list are valid
     valid_adj_squares = []
     for space in adjacent_squares:
-      if(is_valid_square(space)):
+      if(self.is_valid_square(space)):
         valid_adj_squares.append(space)
     return valid_adj_squares
 
@@ -127,9 +127,9 @@ class BoardState():
 
 
   def output(self):
-    print(F"empty spaces: {self.player_scores[0]}")
-    print(F"player 1 score: {self.player_scores[1]}")
-    print(F"player 2 score: {self.player_scores[2]}")
+    print("empty spaces:",self.player_scores[0])
+    print("player 1 score:",self.player_scores[1])
+    print("player 2 score:",self.player_scores[2])
 
 
 #player class
@@ -191,10 +191,13 @@ class Player:
           if(piece_val != 0):
             #the space is occupied
             if(piece_val == self.player):
-              return True, length_of_cap
+              return [True, length_of_cap]
           else:
+              #the space is empty
               return False
-
+        else:
+          pass
+          #the piece we are looking at coud be captured but no action needs to be taken
         cur_location = [cur_location[0]+direction[0], cur_location[1] + direction[1]]
         if(self.boardState_.is_valid_square(cur_location)):
           length_of_cap += 1
@@ -273,13 +276,15 @@ class Player:
 
     #pick the best score
     highest_score = max(move_scores)
+    
     #fun printing
+    """
     if(highest_score == 100):
         print("took a corner, 1 point guaranteed")
     elif(highest_score == 0):
         print("forced to take space adj to corner")
         print("life points going down")
-
+    """
     move = moves[move_scores.index(highest_score)]
     return move
 
@@ -306,11 +311,15 @@ def prepare_response(move):
   return response
 
 if __name__ == "__main__":
-  port = int(sys.argv[1]) if (len(sys.argv) > 1 and sys.argv[1]) else 1337
+  port = int(sys.argv[1]) if (len(sys.argv) > 1 and sys.argv[1]) else 1338
   host = sys.argv[2] if (len(sys.argv) > 2 and sys.argv[2]) else socket.gethostname()
+
+  #optional parameter that will output the final known board state to a file 
+  report = sys.argv[3] if (len(sys.argv) > 3 and sys.argv[3]) else "False"
 
   sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   try:
+
     sock.connect((host, port))
 
     complex_board = BoardState()
@@ -320,8 +329,10 @@ if __name__ == "__main__":
       
       data = sock.recv(1024)
       if not data:
-        #score final move to predict winner
-        #reporting.final_score(board, move, player)
+        #if no data is recieved disconnect and output the final known result if the flag is set
+        if(report == "True"):
+          reporting.final_score(board, move, player)
+  
         print('connection to server closed')
         break
       json_data = json.loads(str(data.decode('UTF-8')))
