@@ -17,7 +17,7 @@ import reporting
 
 
 #class to keep track of board related variables
-#score
+#scores
 #turn number
 #number of empty spaces
 class BoardState():
@@ -62,7 +62,7 @@ class BoardState():
     for direc in self.directions:
       adjacent_squares.append([location[0]+direc[0], location[1]+direc[1]])
     
-    #ensure that all squares in the return list are valid
+    #ensure that all squares in the return list are on the board
     valid_adj_squares = []
     for space in adjacent_squares:
       if(self.is_valid_square(space)):
@@ -70,7 +70,7 @@ class BoardState():
     return valid_adj_squares
 
 
-
+#forces the board to recalculate all the lists and scores
   def update(self, board):
       self.board = board
       self.player_spaces = [[],[],[]]
@@ -87,31 +87,42 @@ class BoardState():
 
       self.output()
 
+  #sorts all the board locations into one of 3 categories
+  #creates a list of lists with 3 categories
+  #index 0 is all empty squares
+  #index 1 is all player 1 pieces
+  #index 2 is all player 2 pieces
   def scan_board(self):
     for row_num, row in enumerate(self.board):
       for col_num, value in enumerate(row):
         self.player_spaces[value].append([row_num, col_num])
 
-  #returns the list of empty spaces
+  #returns the number of empty spaces
   def get_empty_count(self):
     return self.player_scores[0]
 
+  #returns the list of empty spaces
   def get_empty_spaces(self):  
     return self.player_spaces[0]
   
+  #returns the list of player 1 piece locations
   def get_p1_spaces(self):
     return self.player_spaces[1]
   
+  #returns the list of player 2 piece locations
   def get_p2_spaces(self):
     return self.player_spaces[2]
 
-
+  #returns player 1s numerical score
   def get_p1_score(self):
     return self.player_scores[1]
   
+  #returns player 2s numerical score
   def get_p2_score(self):
     return self.player_scores[2]
 
+  #returns true if a given location is on the board
+  #false otherwise
   def is_valid_square(self, location):
   #assumes a default board size of 8x8 indexed from 0
   #this is safe since there are no commands in the game host to modify the board size
@@ -125,7 +136,7 @@ class BoardState():
     
     return True
 
-
+  #print scores and number of empty spaces left
   def output(self):
     print("empty spaces:",self.player_scores[0])
     print("player 1 score:",self.player_scores[1])
@@ -133,8 +144,7 @@ class BoardState():
 
 
 #player class
-#takes information from the boardState class and makes a decision based on that
-
+#takes information from the boardState class and makes move decisions base on that information
 class Player:
 
   def __init__(self, BoardState):

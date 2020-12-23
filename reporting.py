@@ -3,7 +3,7 @@ import os.path
 from client import BoardState
 from client import Player
 
-
+##this file is responsible for all opertations related to predicting the outcome of a game and output the results
 
 #special class of boardstate that can perform moves and modify the board
 class ReportingBoard(BoardState):
